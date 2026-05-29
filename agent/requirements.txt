@@ -1,0 +1,27 @@
+# === Dipendenze progetto ===
+rich
+python-telegram-bot[job-queue]
+fastapi
+uvicorn[standard]
+sse-starlette
+chromadb
+sentence-transformers
+httpx
+beautifulsoup4
+python-dotenv
+pydantic
+pyyaml
+python-multipart
+
+watchdog>=4.0.0
+PyMuPDF>=1.24                    # estrazione testo da PDF (vault/raw/)
+python-docx>=1.1                 # estrazione testo da DOCX (vault/raw/)
+
+# === Dipendenze setup e download ===
+huggingface_hub
+hf_transfer
+tqdm                              # dipendenza indiretta di huggingface_hub per le progress bar
+
+# Nota: llama-cpp-python viene installato separatamente da install.py
+# con supporto CUDA (CMAKE_ARGS="-DGGML_CUDA=on").
+# Non aggiungerlo qui per evitare installazione CPU-only accidentale.
