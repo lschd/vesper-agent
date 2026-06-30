@@ -19,9 +19,12 @@ services:
       WEB_HOST: "0.0.0.0"
 
     volumes:
-      # Modelli, indice ChromaDB, log: persistono sull'host (già scaricati da install.py).
-      - ./data:/app/data
-      # Vault personale (note, sintesi, raw).
+      # Dati interni (modelli, indice ChromaDB, log, conversations.db): volume Docker
+      # permanente e gestito. Sopravvive a `docker compose down` e alla rimozione
+      # del container; per ispezionarlo: docker run --rm -v vesper-data:/d alpine ls /d
+      - vesper-data:/app/data
+      # Vault personale (wiki, synthesis, raw): bind mount sull'host così puoi
+      # aggiungere documenti direttamente in ./vault/ (es. PDF/DOCX in ./vault/raw/).
       - ./vault:/app/vault
 
     ports:
@@ -36,3 +39,8 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+volumes:
+  # Volume Docker permanente per i dati interni (nome fisso: vesper-data).
+  vesper-data:
+    name: vesper-data
