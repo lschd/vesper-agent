@@ -1,0 +1,21 @@
+# Build context: escludi ciò che è grosso, locale o segreto.
+# data/ e vault/ arrivano come volumi a runtime (vedi docker-compose.yml).
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+data/
+vault/
+.env
+
+.git/
+.gitignore
+*.md
+Dockerfile
+.dockerignore
+docker-compose.yml

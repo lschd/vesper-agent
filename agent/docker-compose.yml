@@ -1,0 +1,46 @@
+services:
+  vesper:
+    build:
+      context: .
+      args:
+        # Compute capability della GPU (86 = RTX A2000). Cambiala per altre GPU.
+        CUDA_ARCH: "86"
+    image: vesper-agent:latest
+    container_name: vesper
+    restart: unless-stopped
+
+    # Variabili (TELEGRAM_BOT_TOKEN, HF_TOKEN, LLM_*, RERANKER_*, …) dal .env locale.
+    env_file:
+      - .env
+
+    # Forza i server gestiti internamente + binding raggiungibile dall'host.
+    environment:
+      LLM_MANAGED: "true"
+      WEB_HOST: "0.0.0.0"
+
+    volumes:
+      # Dati interni (modelli, indice ChromaDB, log, conversations.db): volume Docker
+      # permanente e gestito. Sopravvive a `docker compose down` e alla rimozione
+      # del container; per ispezionarlo: docker run --rm -v vesper-data:/d alpine ls /d
+      - vesper-data:/app/data
+      # Vault personale (wiki, synthesis, raw): bind mount sull'host così puoi
+      # aggiungere documenti direttamente in ./vault/ (es. PDF/DOCX in ./vault/raw/).
+      - ./vault:/app/vault
+
+    ports:
+      # Web UI / API FastAPI.
+      - "8080:8080"
+
+    # GPU passthrough (richiede nvidia-container-toolkit sull'host).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  # Volume Docker permanente per i dati interni (nome fisso: vesper-data).
+  vesper-data:
+    name: vesper-data
