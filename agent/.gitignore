@@ -1,0 +1,21 @@
+# Ambiente e segreti
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Dati locali (modelli, indici, log, binari) e vault personale
+data/
+vault/
+
+# OS / editor
+.DS_Store
+*.swp

@@ -451,6 +451,11 @@ async def index_vault(force: bool = False) -> dict:
         _log_dirs.append(str(raw_dir))
     logger.info("trovati %d file da indicizzare in %s", total, _log_dirs)
 
+    # Nessun file da indicizzare: esci subito (ChromaDB.get() rifiuta ids vuoti)
+    if not md_files:
+        logger.info("nessun file da indicizzare, skip")
+        return {"indexed": 0, "skipped": 0, "errors": []}
+
     # ── Phase 1: bulk mtime check ──────────────────────────────────────────────
     # Un'unica query per recuperare ::0 di ogni file → evita N round-trip
     doc_ids = [md.relative_to(vault_path).as_posix() for md in md_files]

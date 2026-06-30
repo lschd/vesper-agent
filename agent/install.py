@@ -77,8 +77,14 @@ if sys.version_info[:2] < _MIN_PY:
 # Da qui in poi siamo sicuramente dentro il venv — import di terze parti consentiti.
 
 step("Installo uv...")
-subprocess.run([str(_venv_python), "-m", "pip", "install", "-q", "python-dotenv"], check=True)
+subprocess.run([str(_venv_python), "-m", "pip", "install", "-q", "uv", "python-dotenv"], check=True)
 print(f"  uv installato ✓")
+
+# uv invocato come modulo del venv → niente dipendenze dal PATH di sistema
+_UV = [str(_venv_python), "-m", "uv"]
+# Lo script gira col python del venv ma senza attivarlo: senza VIRTUAL_ENV
+# uv non sa quale ambiente targetizzare per `uv pip install`.
+os.environ["VIRTUAL_ENV"] = str((_ROOT / ".venv").resolve())
 
 import shutil  # noqa: E402
 import stat  # noqa: E402
@@ -87,8 +93,7 @@ try:
     from dotenv import load_dotenv
 except ImportError:
     print("  Installazione python-dotenv...")
-    # subprocess.run([str(_venv_python), "-m", "pip", "install", "-q", "python-dotenv"], check=True)
-    subprocess.run(["uv", "pip", "install", "-q", "python-dotenv"], check=True)
+    subprocess.run(_UV + ["pip", "install", "-q", "python-dotenv"], check=True)
     from dotenv import load_dotenv
 
 load_dotenv()
@@ -98,7 +103,7 @@ LLM_MODEL_FILE = os.getenv("LLM_MODEL_FILE", "Qwen3.6-27B-Q6_K.gguf")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").lower() == "true"
 RERANKER_MODEL_REPO = os.getenv("RERANKER_MODEL_REPO", "Mungert/Qwen3-Reranker-4B-GGUF")
-RERANKER_MODEL_FILE = os.getenv("RERANKER_MODEL_FILE", "Qwen3-Reranker-4B-Q4_K_M.gguf")
+RERANKER_MODEL_FILE = os.getenv("RERANKER_MODEL_FILE", "Qwen3-Reranker-4B-q4_k_m.gguf")
 LLM_MANAGED = os.getenv("LLM_MANAGED", "true").lower() == "true"
 
 ROOT = _ROOT
@@ -445,7 +450,7 @@ def _install_llama_cpp_python_linux() -> bool:
             print(f"  Tentativo wheel {candidate} v{ver_str} (~1.3 GB — attendere)...")
             # Step 1: installa il wheel CUDA dall'URL diretto
             r = subprocess.run(
-                ["uv", "pip", "install", "--reinstall", wheel_url],
+                _UV + ["pip", "install", "--reinstall", wheel_url],
                 timeout=1800,  # 30 min — il wheel CUDA è ~1.3 GB
             )
             if r.returncode != 0:
@@ -454,7 +459,7 @@ def _install_llama_cpp_python_linux() -> bool:
             # Step 2: installa le dipendenze del [server] extra da PyPI
             # senza reinstallare llama-cpp-python (già installato dal wheel CUDA)
             subprocess.run(
-                ["uv", "pip", "install", f"llama-cpp-python[server]=={ver_str}"],
+                _UV + ["pip", "install", f"llama-cpp-python[server]=={ver_str}"],
                 timeout=120,
             )
             if _llama_has_cuda_backend():
@@ -489,7 +494,7 @@ def _install_llama_cpp_python_linux() -> bool:
         print("  ⚠️  Build da source fallita o senza backend CUDA.")
 
     # Strategia 3 — fallback CPU
-    subprocess.run(["uv", "pip", "install", "llama-cpp-python[server]", "--reinstall"], check=True)
+    subprocess.run(_UV + ["pip", "install", "llama-cpp-python[server]", "--reinstall"], check=True)
     print(
         "  ⚠️  llama-cpp-python installato in modalità CPU.\n"
         "      GPU attiva solo tramite il binario nativo (step successivo).\n"
@@ -518,7 +523,7 @@ step("Installazione dipendenze da requirements.txt")
 req = ROOT / "requirements.txt"
 if not req.exists():
     _fail("requirements.txt non trovato nella root del progetto")
-subprocess.run(["uv", "pip", "install", "-r", str(req)], check=True)
+subprocess.run(_UV + ["pip", "install", "-r", str(req)], check=True)
 print("  Dipendenze installate ✓")
 
 
@@ -540,7 +545,7 @@ if _torch_cuda_tag:
     print(f"  CUDA {_torch_cuda_tag} rilevato — installo PyTorch con indice {_torch_tag}")
     try:
         subprocess.run(
-            ["uv", "pip", "install", "torch", "--index-url", _torch_index],
+            _UV + ["pip", "install", "torch", "--index-url", _torch_index],
             check=True,
             timeout=300,
         )
@@ -556,7 +561,7 @@ else:
 step("Installazione llama-cpp-python")
 if sys.platform == "win32":
     # Windows: il binario nativo usa DLL CUDA bundled — llama-cpp-python è solo fallback CPU.
-    subprocess.run(["uv", "pip", "install", "llama-cpp-python[server]"], check=True)
+    subprocess.run(_UV + ["pip", "install", "llama-cpp-python[server]"], check=True)
     print("  llama-cpp-python (CPU fallback, Windows) ✓")
 else:
     # Linux/WSL: tenta installazione GPU-first per garantire GPU anche nel fallback Python.
@@ -764,7 +769,7 @@ if _env_just_created:
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
     RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").lower() == "true"
     RERANKER_MODEL_REPO = os.getenv("RERANKER_MODEL_REPO", "Mungert/Qwen3-Reranker-4B-GGUF")
-    RERANKER_MODEL_FILE = os.getenv("RERANKER_MODEL_FILE", "Qwen3-Reranker-4B-Q4_K_M.gguf")
+    RERANKER_MODEL_FILE = os.getenv("RERANKER_MODEL_FILE", "Qwen3-Reranker-4B-q4_k_m.gguf")
     LLM_MANAGED = os.getenv("LLM_MANAGED", "true").lower() == "true"
     LLM_MODEL_DIR = ROOT / "data" / "models" / Path(LLM_MODEL_REPO)
     EMBEDDING_LOCAL_DIR = ROOT / "data" / "models" / Path(EMBEDDING_MODEL)
@@ -927,7 +932,7 @@ else:
         )
     except Exception as e:
         print(
-            f"\n  ⚠️  Repo del modello re-ranker non raggiungibile:\n\t'{RERANKER_MODEL_REPO / RERANKER_MODEL_FILE}'.\n"
+            f"\n  ⚠️  Repo del modello re-ranker non raggiungibile:\n\t'{RERANKER_MODEL_REPO}/{RERANKER_MODEL_FILE}'.\n"
             "      Assicurati di aver specificato il repo corretto nel file .env\n"
             "      ed esegui nuovamente 'python install.py' per scaricarlo."
         )

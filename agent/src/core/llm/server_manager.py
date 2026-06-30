@@ -10,7 +10,7 @@ from pathlib import Path
 
 import httpx
 
-from src.core.llm.cuda_utils import find_cuda_lib_dir
+from src.core.llm.cuda_utils import find_cuda_lib_dir, find_cuda_pip_lib_dirs
 from src.core.llm.gpu_manager import (
     get_non_llm_gpu_index as _get_non_llm_gpu_index,
     get_vram_mib as _get_vram_mib,
@@ -425,7 +425,16 @@ def _build_ld_library_path(env: dict, using_native_bin: bool) -> None:
     if cuda_dir:
         ld_parts.append(cuda_dir)
         logger.info("CUDA runtime trovata in: %s", cuda_dir)
-    elif not using_native_bin:
+
+    # Librerie CUDA installate via pip (nvidia-*-cu12) nel venv: contengono
+    # libcudart.so.12 / libcublas.so.12 richieste da libllama.so. Stanno in
+    # directory separate (nvidia/cuda_runtime/lib, nvidia/cublas/lib, …).
+    pip_cuda_dirs = find_cuda_pip_lib_dirs()
+    if pip_cuda_dirs:
+        ld_parts.extend(pip_cuda_dirs)
+        logger.info("CUDA runtime pip trovata: %d directory nvidia/*/lib", len(pip_cuda_dirs))
+
+    if not cuda_dir and not pip_cuda_dirs and not using_native_bin:
         logger.warning(
             "CUDA runtime non trovata — LD_LIBRARY_PATH non impostato. "
             "Se hai CUDA installato, aggiungi il path a _CANDIDATES in cuda_utils.py."
